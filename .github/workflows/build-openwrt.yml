@@ -28,10 +28,10 @@ jobs:
             device-tree-compiler wget curl gnupg
           sudo apt-get install -y jq
 
-      - name: 克隆官方 OpenWrt 源码
+      - name: 克隆含 N30 Pro 补丁的源码分支
         run: |
-          # N30 Pro 的设备支持已合入 OpenWrt 主线(25.12+)
-          git clone --depth 1 https://github.com/openwrt/openwrt.git /opt/openwrt
+          # N30 Pro 的设备支持(PR#24316)在 bfdeh/openwrt 的 N30PRO-dev 分支, 尚未合入官方main
+          git clone --depth 1 --branch N30PRO-dev https://github.com/bfdeh/openwrt.git /opt/openwrt
 
       - name: 更新 feeds
         working-directory: /opt/openwrt
