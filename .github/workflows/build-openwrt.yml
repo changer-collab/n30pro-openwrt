@@ -57,6 +57,15 @@ jobs:
           cp -f "$GITHUB_WORKSPACE/n30pro.config" .config
           make defconfig
 
+      - name: 注入root密码(uci-defaults) 到 rootfs
+        working-directory: /opt/openwrt
+        run: |
+          # 将仓库顶层 files/ 作为 rootfs 覆盖层放入, 首次开机自动执行 uci-defaults 设置 root 密码
+          cp -rf "$GITHUB_WORKSPACE/files" ./
+          chmod +x files/etc/uci-defaults/* 2>/dev/null || true
+          echo "---- 注入 files 覆盖层内容 ----"
+          find files -type f 2>/dev/null || true
+
       - name: 编译固件
         working-directory: /opt/openwrt
         run: |

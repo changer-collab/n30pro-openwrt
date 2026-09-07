@@ -1,0 +1,5 @@
+#!/bin/sh
+# 预置 root 密码(首次开机, uci-defaults 在 boot 时执行)
+# 目的: 避免 LuCI 提示 "No password set!"，并保证 SSH(dropbear) 可用 root/wcz1311398A 登录
+echo -e "wcz1311398A\nwcz1311398A" | passwd root
+exit 0
