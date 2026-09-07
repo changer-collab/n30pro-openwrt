@@ -71,6 +71,17 @@ jobs:
         run: |
           make -j$(nproc) V=s
 
+      - name: 校验root密码脚本是否编进rootfs
+        working-directory: /opt/openwrt
+        run: |
+          echo "==== 检查 rootfs 中的 99-set-rootpass ===="
+          FOUND=$(find build_dir -path '*etc/uci-defaults/99-set-rootpass' 2>/dev/null | head -n1)
+          if [ -n "$FOUND" ]; then
+            echo "OK 找到: $FOUND"
+          else
+            echo "WARNING: 未在 rootfs staging 中找到 99-set-rootpass，请检查 files 覆盖层是否被 make 合并"
+          fi
+
       - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
