@@ -1,0 +1,71 @@
+# OpenWrt 云编译工作流 —— 用于磊科 N30 Pro (x 暨大校园网)
+# 触发方式: 手动 Run workflow, 或 push 到本仓库
+name: Build-N30Pro-OpenWrt
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 20 * * *'   # 每天 UTC 20 点(北京时间凌晨4点)自动编译
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 240    # OpenWrt 全量编译上限 4 小时
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 准备环境
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install build-essential asciidoc binutils bzip2 gawk \
+            gettext git libncurses5-dev libz-dev patch python3 python3-distutils \
+            python3-setuptools rsync subversion swig unzip zlib1g-dev \
+            libssl-dev flex bc u-boot-tools file clang upx gcc-multilib \
+            device-tree-compiler wget curl gnupg
+          sudo apt-get install -y jq
+
+      - name: 克隆官方 OpenWrt 源码
+        run: |
+          # N30 Pro 的设备支持已合入 OpenWrt 主线(25.12+)
+          git clone --depth 1 https://github.com/openwrt/openwrt.git /opt/openwrt
+
+      - name: 更新 feeds
+        working-directory: /opt/openwrt
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: 添加校园网插件源码
+        working-directory: /opt/openwrt
+        run: |
+          # mentohust 认证 + luci 界面 (pixelonetx 仓库含守护进程与LuCI包)
+          git clone --depth 1 https://github.com/pixelonetx/mentohust.git package/mentohust || echo "mentohust clone failed"
+          # UA2F 改UA 防检测
+          git clone --depth 1 https://github.com/Zxilly/UA2F.git package/UA2F || echo "UA2F clone failed"
+          # luci-app-ua2f 界面
+          git clone --depth 1 https://github.com/lucikap/luci-app-ua2f.git package/luci-app-ua2f || echo "luci-app-ua2f clone failed"
+          # UA2F 依赖(可选)
+          git clone --depth 1 https://github.com/CHN-beta/rkp-ipid.git package/rkp-ipid 2>/dev/null || true
+
+      - name: 写入编译配置
+        working-directory: /opt/openwrt
+        run: |
+          cp -f "$GITHUB_WORKSPACE/n30pro.config" .config
+          make defconfig
+
+      - name: 编译固件
+        working-directory: /opt/openwrt
+        run: |
+          make -j$(nproc) V=s
+
+      - name: 上传编译产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: n30pro-openwrt-firmware
+          path: |
+            /opt/openwrt/bin/targets/*/*/*
+          if-no-files-found: warn
